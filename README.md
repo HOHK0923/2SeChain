@@ -228,7 +228,7 @@ logs/attack_20240315_143052.log
 
 ## 주의사항
 
-⚠️ **법적 경고**
+**법적 경고**
 
 이 도구는 오직 **교육 목적** 및 **승인된 침투테스트 환경**에서만 사용해야 합니다.
 
@@ -317,4 +317,4 @@ sudo bash install.sh
 
 ---
 
-**Made with ❤️ by 2SeC Team**
+**Made by 2SeC Team**
