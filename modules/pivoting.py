@@ -271,14 +271,28 @@ def determine_file_category(filepath):
 def extract_command_output(html_response, debug=False):
     """HTML 응답에서 실제 명령어 출력 추출"""
     try:
-        # 디버깅 모드: HTML 응답 분석
+        # 디버깅 모드: HTML 응답 분석 및 파일 저장
         if debug:
+            # HTML 파일로 저장
+            debug_file = '/Users/hwangjunha/Desktop/22sec/dvwa_debug_response.html'
+            try:
+                with open(debug_file, 'w', encoding='utf-8') as f:
+                    f.write(html_response)
+                print(f"[DEBUG] HTML response saved to: {debug_file}")
+            except Exception as e:
+                print(f"[DEBUG] Failed to save HTML: {str(e)}")
+
             print(f"[DEBUG] Response length: {len(html_response)} bytes")
             print(f"[DEBUG] Searching for <pre> tags...")
 
             # pre 태그 확인
             if '<pre>' in html_response.lower():
                 print(f"[DEBUG] Found <pre> tag")
+                # pre 태그 내용 샘플
+                pre_match = re.search(r'<pre>(.*?)</pre>', html_response, re.DOTALL | re.IGNORECASE)
+                if pre_match:
+                    content = pre_match.group(1)[:200]
+                    print(f"[DEBUG] Pre content sample: {content}")
             else:
                 print(f"[DEBUG] No <pre> tag found")
 
@@ -295,6 +309,12 @@ def extract_command_output(html_response, debug=False):
                 ping_idx = html_response.find('PING 127.0.0.1')
                 sample = html_response[ping_idx:ping_idx+500]
                 print(f"[DEBUG] Sample around ping:\n{sample[:300]}\n...")
+
+            # 다른 가능한 컨테이너 찾기
+            if 'class="vulnerable_code_area"' in html_response:
+                print(f"[DEBUG] Found vulnerable_code_area class")
+            if '<div class="body_padded">' in html_response:
+                print(f"[DEBUG] Found body_padded div")
 
         # 방법 1: <pre> 태그에서 추출
         pre_match = re.search(r'<pre>(.*?)</pre>', html_response, re.DOTALL | re.IGNORECASE)
