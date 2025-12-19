@@ -268,33 +268,94 @@ def determine_file_category(filepath):
     else:
         return 'other'
 
-def extract_command_output(html_response):
+def extract_command_output(html_response, debug=False):
     """HTML 응답에서 실제 명령어 출력 추출"""
     try:
-        # DVWA의 command injection 결과는 <pre> 태그 내에 있음
-        pre_match = re.search(r'<pre>(.*?)</pre>', html_response, re.DOTALL)
+        # 디버깅 모드: HTML 응답을 파일로 저장
+        if debug:
+            import hashlib
+            filename = f"debug_response_{hashlib.md5(html_response.encode()).hexdigest()[:8]}.html"
+            with open(filename, 'w', encoding='utf-8') as f:
+                f.write(html_response)
+            print(f"[DEBUG] HTML saved to {filename}")
+
+        # 방법 1: <pre> 태그에서 추출
+        pre_match = re.search(r'<pre>(.*?)</pre>', html_response, re.DOTALL | re.IGNORECASE)
         if pre_match:
             output = pre_match.group(1)
-            # ping 결과 제거 (127.0.0.1 관련 내용)
-            lines = output.split('\n')
-            filtered_lines = []
-            skip_ping = False
+        else:
+            # 방법 2: textarea에서 추출
+            textarea_match = re.search(r'<textarea[^>]*>(.*?)</textarea>', html_response, re.DOTALL | re.IGNORECASE)
+            if textarea_match:
+                output = textarea_match.group(1)
+            else:
+                # 방법 3: DVWA의 vulnerability 컨테이너 영역에서 추출
+                container_match = re.search(r'class=["\']vulnerability[^>]*>(.*?)</div>', html_response, re.DOTALL | re.IGNORECASE)
+                if container_match:
+                    # HTML 태그 제거
+                    output = re.sub(r'<[^>]+>', '', container_match.group(1))
+                else:
+                    if debug:
+                        print(f"[DEBUG] No matching HTML pattern found")
+                    return ""
 
-            for line in lines:
-                # ping 명령어 시작 감지
-                if 'PING 127.0.0.1' in line or 'ping statistics' in line:
-                    skip_ping = True
-                    continue
-                # ping 결과가 끝나면
-                if skip_ping and line.strip() and not any(x in line for x in ['64 bytes', 'packets transmitted', 'rtt min']):
-                    skip_ping = False
+        # HTML 엔티티 디코딩
+        output = output.replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
+        output = output.replace('&quot;', '"').replace('&#039;', "'")
 
-                if not skip_ping and line.strip():
-                    filtered_lines.append(line)
+        # ping 결과 제거 (127.0.0.1 관련 내용)
+        lines = output.split('\n')
+        filtered_lines = []
+        skip_ping = False
+        ping_end_marker = 0
 
-            return '\n'.join(filtered_lines)
-        return ""
-    except Exception:
+        for i, line in enumerate(lines):
+            # ping 명령어 시작 감지
+            if 'PING 127.0.0.1' in line:
+                skip_ping = True
+                continue
+
+            # ping 통계 부분 감지
+            if skip_ping and ('ping statistics' in line.lower() or 'packets transmitted' in line.lower()):
+                # 다음 2-3줄도 ping 결과이므로 스킵
+                ping_end_marker = i + 3
+                continue
+
+            # ping 결과 종료 후부터 실제 명령어 출력
+            if i > ping_end_marker and skip_ping:
+                skip_ping = False
+
+            # ping 관련 출력 건너뛰기
+            if skip_ping or i <= ping_end_marker:
+                continue
+
+            # 빈 줄이 아니고 실제 내용이 있으면 추가
+            if line.strip():
+                filtered_lines.append(line)
+
+        result = '\n'.join(filtered_lines)
+
+        # 디버깅: 추출된 내용이 너무 짧으면 원본 일부를 반환
+        if len(result.strip()) < 10 and len(output) > 100:
+            # ping 부분 이후의 모든 내용 반환
+            ping_end = output.find('packets transmitted')
+            if ping_end > 0:
+                # ping 통계 이후 200자 찾기
+                remaining = output[ping_end:].split('\n', 4)
+                if len(remaining) > 3:
+                    result = '\n'.join(remaining[3:])
+            else:
+                # ping이 없으면 전체 반환
+                result = output
+
+        if debug:
+            print(f"[DEBUG] Extracted {len(result)} bytes")
+            print(f"[DEBUG] Preview: {result[:200]}")
+
+        return result.strip()
+    except Exception as e:
+        # 디버깅을 위해 에러 출력
+        print(f"[DEBUG] extract_command_output error: {str(e)}")
         return ""
 
 def attempt_data_exfiltration(session, delay):
@@ -343,8 +404,9 @@ def attempt_data_exfiltration(session, delay):
 
             response = session.session.get(cmdi_url, params=params)
 
-            # HTML에서 실제 명령어 출력 추출
-            exfiltrated_data = extract_command_output(response.text)
+            # HTML에서 실제 명령어 출력 추출 (첫 번째 요청은 디버그 모드)
+            is_first = (results['attempts'] == 1)
+            exfiltrated_data = extract_command_output(response.text, debug=is_first)
 
             if exfiltrated_data and len(exfiltrated_data) > 10:  # 실제 데이터가 있는 경우
                 results['successful'] += 1
