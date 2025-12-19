@@ -10,7 +10,7 @@ import os
 import readline
 from datetime import datetime
 from modules import sql_injection, xss_attack, cmd_injection, file_upload
-from modules import post_exploit, pivoting
+from modules import post_exploit, pivoting, cloud_exploit, privilege_escalation
 from utils import logger, session_manager
 
 # 컬러 출력을 위한 ANSI 코드
@@ -81,6 +81,8 @@ class DVWAAttacker:
 {Colors.CYAN}[고급 공격]{Colors.END}
   post-exploit                        - Post-Exploitation 실행
   pivoting                            - 피버팅 및 데이터 탈취 실행
+  cloud-exploit                       - AWS IMDS 탈취 및 클라우드 메타데이터 수집
+  privesc                             - 권한 상승 및 루트 권한 획득 시도
 
 {Colors.CYAN}[기타]{Colors.END}
   logs                                - 로그 파일 목록 보기
@@ -259,6 +261,26 @@ class DVWAAttacker:
         print(f"{Colors.YELLOW}[*] 피버팅 및 데이터 탈취 시작...{Colors.END}")
         result = pivoting.run_attack(self.session, self.delay)
 
+    def cmd_cloud_exploit(self):
+        """AWS IMDS 탈취"""
+        if not self.connected:
+            print(f"{Colors.RED}[!] 먼저 타겟에 연결하세요{Colors.END}")
+            return
+
+        print(f"{Colors.YELLOW}[*] AWS IMDS 탈취 및 클라우드 메타데이터 수집 시작...{Colors.END}")
+        result = cloud_exploit.run_attack(self.session, self.delay)
+        self._print_result(result)
+
+    def cmd_privesc(self):
+        """권한 상승"""
+        if not self.connected:
+            print(f"{Colors.RED}[!] 먼저 타겟에 연결하세요{Colors.END}")
+            return
+
+        print(f"{Colors.YELLOW}[*] 권한 상승 및 루트 권한 획득 시도...{Colors.END}")
+        result = privilege_escalation.run_attack(self.session, self.delay)
+        self._print_result(result)
+
     def cmd_logs(self):
         """로그 파일 목록"""
         if not os.path.exists(self.log_dir):
@@ -384,6 +406,12 @@ class DVWAAttacker:
 
                 elif cmd == 'pivoting':
                     self.cmd_pivoting()
+
+                elif cmd == 'cloud-exploit':
+                    self.cmd_cloud_exploit()
+
+                elif cmd == 'privesc':
+                    self.cmd_privesc()
 
                 elif cmd == 'logs':
                     self.cmd_logs()
