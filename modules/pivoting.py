@@ -340,33 +340,38 @@ def extract_command_output(html_response, debug=False):
         output = output.replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
         output = output.replace('&quot;', '"').replace('&#039;', "'")
 
-        # ping 결과 제거 (127.0.0.1 관련 내용)
+        # ping 결과 완전 제거
         lines = output.split('\n')
         filtered_lines = []
-        skip_ping = False
-        ping_end_marker = 0
+        in_ping_section = False
 
-        for i, line in enumerate(lines):
-            # ping 명령어 시작 감지
+        for line in lines:
+            # ping 시작 감지
             if 'PING 127.0.0.1' in line:
-                skip_ping = True
+                in_ping_section = True
                 continue
 
-            # ping 통계 부분 감지
-            if skip_ping and ('ping statistics' in line.lower() or 'packets transmitted' in line.lower()):
-                # 다음 2-3줄도 ping 결과이므로 스킵
-                ping_end_marker = i + 3
-                continue
+            # ping 관련 라인 건너뛰기
+            if in_ping_section:
+                # ping 데이터 라인
+                if 'bytes from 127.0.0.1' in line:
+                    continue
+                # ping 통계 섹션
+                if '127.0.0.1 ping statistics' in line:
+                    continue
+                if 'packets transmitted' in line:
+                    continue
+                if 'round-trip' in line or 'rtt min' in line:
+                    continue
+                if line.startswith('---'):
+                    continue
+                # 빈 줄
+                if not line.strip():
+                    continue
+                # ping 섹션 종료 - 실제 명령어 출력 시작
+                in_ping_section = False
 
-            # ping 결과 종료 후부터 실제 명령어 출력
-            if i > ping_end_marker and skip_ping:
-                skip_ping = False
-
-            # ping 관련 출력 건너뛰기
-            if skip_ping or i <= ping_end_marker:
-                continue
-
-            # 빈 줄이 아니고 실제 내용이 있으면 추가
+            # 실제 내용만 추가
             if line.strip():
                 filtered_lines.append(line)
 
