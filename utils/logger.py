@@ -139,6 +139,97 @@ def log_summary(total_attacks, successful_attacks, attack_breakdown):
 
     _logger.info('='*80)
 
+def log_exfiltrated_data(data_type, command, actual_data, preview_length=500):
+    """
+    탈취된 데이터 로그 기록
+
+    Args:
+        data_type: 데이터 타입 (예: Database credentials, SSH keys 등)
+        command: 실행된 명령어
+        actual_data: 실제 탈취된 데이터 내용
+        preview_length: 로그에 기록할 데이터 미리보기 길이
+    """
+    if _logger is None:
+        return
+
+    _logger.info('='*80)
+    _logger.info(f'DATA EXFILTRATION | Type: {data_type}')
+    _logger.info(f'Command Executed: {command}')
+    _logger.info(f'Data Size: {len(actual_data)} bytes')
+    _logger.info('-'*80)
+
+    # 데이터 미리보기 (너무 길면 잘라서 저장)
+    preview = actual_data[:preview_length] if len(actual_data) > preview_length else actual_data
+    _logger.info('Exfiltrated Data Preview:')
+    _logger.info(preview)
+
+    if len(actual_data) > preview_length:
+        _logger.info(f'... (truncated, {len(actual_data) - preview_length} more bytes)')
+
+    _logger.info('='*80)
+
+def log_sensitive_file(filepath, category, file_content, preview_lines=10):
+    """
+    민감한 파일 내용 로그 기록
+
+    Args:
+        filepath: 파일 경로
+        category: 파일 카테고리 (예: config_files, credential_files 등)
+        file_content: 파일 내용
+        preview_lines: 로그에 기록할 줄 수
+    """
+    if _logger is None:
+        return
+
+    _logger.info('='*80)
+    _logger.info(f'SENSITIVE FILE FOUND | Category: {category}')
+    _logger.info(f'File Path: {filepath}')
+    _logger.info(f'File Size: {len(file_content)} bytes')
+    _logger.info('-'*80)
+
+    # 파일 내용을 줄 단위로 분리
+    lines = file_content.split('\n')
+    preview = '\n'.join(lines[:preview_lines])
+
+    _logger.info('File Content Preview:')
+    _logger.info(preview)
+
+    if len(lines) > preview_lines:
+        _logger.info(f'... (truncated, {len(lines) - preview_lines} more lines)')
+
+    _logger.info('='*80)
+
+def log_command_output(command, category, output, preview_lines=20):
+    """
+    명령어 실행 결과 로그 기록
+
+    Args:
+        command: 실행된 명령어
+        category: 명령어 카테고리 (예: system_info, user_enum 등)
+        output: 명령어 실행 결과
+        preview_lines: 로그에 기록할 줄 수
+    """
+    if _logger is None:
+        return
+
+    _logger.info('='*80)
+    _logger.info(f'COMMAND EXECUTION | Category: {category}')
+    _logger.info(f'Command: {command}')
+    _logger.info(f'Output Size: {len(output)} bytes')
+    _logger.info('-'*80)
+
+    # 출력을 줄 단위로 분리
+    lines = output.split('\n')
+    preview = '\n'.join(lines[:preview_lines])
+
+    _logger.info('Command Output:')
+    _logger.info(preview)
+
+    if len(lines) > preview_lines:
+        _logger.info(f'... (truncated, {len(lines) - preview_lines} more lines)')
+
+    _logger.info('='*80)
+
 def close_logger():
     """로거 종료"""
     if _logger is not None:

