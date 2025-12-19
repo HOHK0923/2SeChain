@@ -271,13 +271,30 @@ def determine_file_category(filepath):
 def extract_command_output(html_response, debug=False):
     """HTML 응답에서 실제 명령어 출력 추출"""
     try:
-        # 디버깅 모드: HTML 응답을 파일로 저장
+        # 디버깅 모드: HTML 응답 분석
         if debug:
-            import hashlib
-            filename = f"debug_response_{hashlib.md5(html_response.encode()).hexdigest()[:8]}.html"
-            with open(filename, 'w', encoding='utf-8') as f:
-                f.write(html_response)
-            print(f"[DEBUG] HTML saved to {filename}")
+            print(f"[DEBUG] Response length: {len(html_response)} bytes")
+            print(f"[DEBUG] Searching for <pre> tags...")
+
+            # pre 태그 확인
+            if '<pre>' in html_response.lower():
+                print(f"[DEBUG] Found <pre> tag")
+            else:
+                print(f"[DEBUG] No <pre> tag found")
+
+            # textarea 확인
+            if '<textarea' in html_response.lower():
+                print(f"[DEBUG] Found <textarea> tag")
+            else:
+                print(f"[DEBUG] No <textarea> tag found")
+
+            # 실제 ping 결과가 있는지 확인
+            if 'PING 127.0.0.1' in html_response:
+                print(f"[DEBUG] Found ping output in response")
+                # ping 이후 내용 샘플 출력
+                ping_idx = html_response.find('PING 127.0.0.1')
+                sample = html_response[ping_idx:ping_idx+500]
+                print(f"[DEBUG] Sample around ping:\n{sample[:300]}\n...")
 
         # 방법 1: <pre> 태그에서 추출
         pre_match = re.search(r'<pre>(.*?)</pre>', html_response, re.DOTALL | re.IGNORECASE)
