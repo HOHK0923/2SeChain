@@ -65,7 +65,12 @@ class DVWAAttacker:
 {Colors.BOLD}사용 가능한 명령어:{Colors.END}
 
 {Colors.CYAN}[연결 관리]{Colors.END}
-  connect <url> <username> <password>  - DVWA에 연결 (예: connect http://192.168.1.100/dvwa admin password)
+  connect <url> <username> <password>  - DVWA에 연결
+    옵션:
+      --anon    : 익명화 모드 (User-Agent 로테이션, 프록시)
+      --tor     : Tor 네트워크 사용
+    예시: connect http://192.168.1.100/dvwa admin password --anon
+
   disconnect                           - 연결 해제
   status                              - 현재 연결 상태 확인
   set security <level>                - 보안 레벨 설정 (low/medium/high)
@@ -116,14 +121,24 @@ class DVWAAttacker:
     def cmd_connect(self, args):
         """DVWA 연결"""
         if len(args) < 3:
-            print(f"{Colors.RED}[!] 사용법: connect <url> <username> <password>{Colors.END}")
+            print(f"{Colors.RED}[!] 사용법: connect <url> <username> <password> [--anon] [--tor]{Colors.END}")
+            print(f"{Colors.YELLOW}[*] 예시: connect http://192.168.1.100/dvwa admin password --anon{Colors.END}")
             return
 
         self.target = args[0]
         self.username = args[1]
         self.password = args[2]
 
+        # 익명화 옵션 확인
+        use_anonymization = '--anon' in args or '--anonymous' in args
+        use_tor = '--tor' in args
+
         print(f"{Colors.YELLOW}[*] {self.target}에 연결 중...{Colors.END}")
+
+        if use_anonymization:
+            print(f"{Colors.CYAN}[*] 익명화 모드 활성화{Colors.END}")
+        if use_tor:
+            print(f"{Colors.CYAN}[*] Tor 네트워크 사용{Colors.END}")
 
         try:
             # 로거 초기화
@@ -137,8 +152,14 @@ class DVWAAttacker:
                 self.target,
                 self.username,
                 self.password,
-                self.security_level
+                self.security_level,
+                use_anonymization=use_anonymization,
+                use_tor=use_tor
             )
+
+            # 익명화 상태 확인
+            if use_anonymization:
+                self.session.check_anonymity()
 
             if self.session.login():
                 self.connected = True

