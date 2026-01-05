@@ -62,6 +62,12 @@ class DVWASession:
         # requests 세션 생성
         self.session = requests.Session()
 
+        # 세션 정보 초기화 (익명화 전에 해야함)
+        self.is_logged_in = False
+        self.csrf_token = None
+        self.current_proxy = None
+        self.proxy_index = 0
+
         # Retry 설정
         retry = Retry(
             total=3,
@@ -82,12 +88,6 @@ class DVWASession:
             self.session.headers.update({
                 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36'
             })
-
-        # 세션 정보
-        self.is_logged_in = False
-        self.csrf_token = None
-        self.current_proxy = None
-        self.proxy_index = 0
 
     def _setup_anonymization(self):
         """익명화 설정"""
