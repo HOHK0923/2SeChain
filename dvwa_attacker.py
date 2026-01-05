@@ -10,7 +10,7 @@ import os
 import readline
 from datetime import datetime
 from modules import sql_injection, xss_attack, cmd_injection, file_upload
-from modules import post_exploit, pivoting, cloud_exploit, privilege_escalation, docker_escape
+from modules import post_exploit, pivoting, cloud_exploit, privilege_escalation, docker_escape, post_docker_exploit
 from utils import logger, session_manager
 
 # 컬러 출력을 위한 ANSI 코드
@@ -89,8 +89,15 @@ class DVWAAttacker:
   cloud-exploit                       - AWS IMDS 탈취 및 클라우드 메타데이터 수집
   privesc                             - 권한 상승 및 루트 권한 획득 시도
   docker-escape                       - Docker 컨테이너 탈출 및 호스트 권한 획득
+  post-docker <type>                  - Docker 탈출 후 추가 공격
+    - aws_takeover                    : AWS 권한 탈취
+    - opensearch_takeover             : OpenSearch/Kibana 장악
+    - database_credentials            : DB 크리덴셜 수집
+    - container_manipulation          : 다른 컨테이너 조작
+    - persistence_backdoor            : 영구 백도어 설치
 
 {Colors.CYAN}[기타]{Colors.END}
+  switch-ip                           - IP 주소 전환 (익명화 모드 필요)
   logs                                - 로그 파일 목록 보기
   show last-log                       - 마지막 로그 파일 내용 보기
   verbose <on/off>                    - 상세 출력 모드 토글
@@ -313,6 +320,44 @@ class DVWAAttacker:
         result = docker_escape.run_attack(self.session, self.delay)
         self._print_result(result)
 
+    def cmd_switch_ip(self):
+        """IP 주소 전환"""
+        if not self.connected:
+            print(f"{Colors.RED}[!] 먼저 타겟에 연결하세요{Colors.END}")
+            return
+
+        if not self.session.use_anonymization:
+            print(f"{Colors.YELLOW}[!] 익명화 모드가 활성화되지 않았습니다.{Colors.END}")
+            print(f"{Colors.YELLOW}[!] connect 명령어에 --anon 옵션을 사용하세요.{Colors.END}")
+            return
+
+        print(f"{Colors.YELLOW}[*] IP 주소 전환 중...{Colors.END}")
+        self.session.switch_identity()
+
+    def cmd_post_docker(self, args):
+        """Docker 탈출 후 추가 공격"""
+        if not self.connected:
+            print(f"{Colors.RED}[!] 먼저 타겟에 연결하세요{Colors.END}")
+            return
+
+        if len(args) == 0:
+            print(f"{Colors.YELLOW}[*] 사용 가능한 공격 유형:{Colors.END}")
+            post_docker_exploit.list_available_attacks()
+            return
+
+        attack_type = args[0].lower()
+        available_attacks = ['aws_takeover', 'opensearch_takeover', 'database_credentials',
+                           'container_manipulation', 'persistence_backdoor']
+
+        if attack_type not in available_attacks:
+            print(f"{Colors.RED}[!] 알 수 없는 공격 유형: {attack_type}{Colors.END}")
+            print(f"{Colors.YELLOW}[*] 사용 가능: {', '.join(available_attacks)}{Colors.END}")
+            return
+
+        print(f"{Colors.YELLOW}[*] Docker 탈출 후 추가 공격 시작...{Colors.END}")
+        result = post_docker_exploit.run_post_escape_attack(self.session, attack_type, self.delay)
+        self._print_result(result)
+
     def cmd_logs(self):
         """로그 파일 목록"""
         if not os.path.exists(self.log_dir):
@@ -447,6 +492,12 @@ class DVWAAttacker:
 
                 elif cmd == 'docker-escape':
                     self.cmd_docker_escape()
+
+                elif cmd == 'post-docker':
+                    self.cmd_post_docker(args)
+
+                elif cmd == 'switch-ip' or cmd == 'rotate-ip':
+                    self.cmd_switch_ip()
 
                 elif cmd == 'logs':
                     self.cmd_logs()

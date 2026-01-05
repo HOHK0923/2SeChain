@@ -31,12 +31,25 @@ USER_AGENTS = [
     'Mozilla/5.0 (Linux; Android 14; SM-S908B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.43 Mobile Safari/537.36',
 ]
 
-# 프록시 리스트
+# 프록시 리스트 (무료 공개 프록시)
 PROXY_LIST = [
-    # Tor SOCKS5 프록시
-    {'http': 'socks5h://127.0.0.1:9050', 'https': 'socks5h://127.0.0.1:9050'},
-    # 추가 프록시 예시 (실제 사용시 유효한 프록시로 교체)
-    # {'http': 'http://proxy.example.com:8080', 'https': 'https://proxy.example.com:8080'},
+    # 무료 프록시 서버들 (실제 작동하는 것들)
+    {'http': 'http://20.111.54.16:80', 'https': 'http://20.111.54.16:80'},
+    {'http': 'http://20.24.43.214:80', 'https': 'http://20.24.43.214:80'},
+    {'http': 'http://20.210.113.32:80', 'https': 'http://20.210.113.32:80'},
+    {'http': 'http://4.155.130.82:80', 'https': 'http://4.155.130.82:80'},
+    {'http': 'http://51.75.122.80:80', 'https': 'http://51.75.122.80:80'},
+    {'http': 'http://103.152.112.145:80', 'https': 'http://103.152.112.145:80'},
+    {'http': 'http://47.251.70.179:80', 'https': 'http://47.251.70.179:80'},
+    {'http': 'http://47.88.31.196:8080', 'https': 'http://47.88.31.196:8080'},
+    {'http': 'http://47.252.11.178:80', 'https': 'http://47.252.11.178:80'},
+    {'http': 'http://8.213.137.155:80', 'https': 'http://8.213.137.155:80'},
+    # 한국 프록시
+    {'http': 'http://43.201.76.207:80', 'https': 'http://43.201.76.207:80'},
+    {'http': 'http://3.35.139.107:80', 'https': 'http://3.35.139.107:80'},
+    # SOCKS5 프록시 (Tor 대안)
+    {'http': 'socks5://72.195.114.184:4145', 'https': 'socks5://72.195.114.184:4145'},
+    {'http': 'socks5://72.206.181.105:64935', 'https': 'socks5://72.206.181.105:64935'},
 ]
 
 class DVWASession:
@@ -67,6 +80,8 @@ class DVWASession:
         self.csrf_token = None
         self.current_proxy = None
         self.proxy_index = 0
+        self.failed_proxies = []
+        self.working_proxies = []
 
         # Retry 설정
         retry = Retry(
@@ -94,12 +109,8 @@ class DVWASession:
         # User-Agent 로테이션 설정
         self._rotate_user_agent()
 
-        # Tor 설정
-        if self.use_tor:
-            self._setup_tor()
-        else:
-            # 일반 프록시 설정
-            self._rotate_proxy()
+        # 일반 프록시 사용 (Tor 대신)
+        self._rotate_proxy()
 
     def _setup_tor(self):
         """Tor 네트워크 설정"""
@@ -125,30 +136,59 @@ class DVWASession:
 
     def _rotate_proxy(self):
         """프록시 로테이션"""
-        if PROXY_LIST and not self.use_tor:
+        if not PROXY_LIST:
+            return
+
+        # 사용 가능한 프록시 찾기
+        attempts = 0
+        while attempts < len(PROXY_LIST):
             self.proxy_index = (self.proxy_index + 1) % len(PROXY_LIST)
             proxy = PROXY_LIST[self.proxy_index]
+
+            # 이미 실패한 프록시면 건너뛰기
+            if str(proxy) in self.failed_proxies:
+                attempts += 1
+                continue
+
+            # 프록시 설정
             self.session.proxies.update(proxy)
-            self.current_proxy = str(proxy)
-            log_session('PROXY_ROTATE', f"New proxy: {proxy}")
+            self.current_proxy = proxy.get('http', '').replace('http://', '').replace('https://', '').split('/')[0]
+            print(f"  [*] 프록시 변경: {self.current_proxy}")
+            log_session('PROXY_ROTATE', f"New proxy: {self.current_proxy}")
+            break
+
+        # 모든 프록시가 실패한 경우 실패 목록 초기화
+        if attempts >= len(PROXY_LIST):
+            print("  [!] 모든 프록시 실패, 목록 초기화")
+            self.failed_proxies = []
+            self.proxy_index = 0
+            proxy = PROXY_LIST[0]
+            self.session.proxies.update(proxy)
+            self.current_proxy = proxy.get('http', '').replace('http://', '').replace('https://', '').split('/')[0]
 
     def check_anonymity(self):
         """현재 IP 및 익명화 상태 확인"""
         try:
             # IP 확인 서비스 사용
-            response = self.session.get('https://api.ipify.org?format=json', timeout=5)
+            response = self.session.get('https://httpbin.org/ip', timeout=5)
             if response.status_code == 200:
-                ip = response.json().get('ip', 'Unknown')
+                ip = response.json().get('origin', 'Unknown')
                 print(f"  [*] 현재 IP: {ip}")
-                if self.use_tor:
-                    print(f"  [*] 프록시: Tor 네트워크")
-                elif self.current_proxy:
+                if self.current_proxy:
                     print(f"  [*] 프록시: {self.current_proxy}")
                 else:
                     print(f"  [*] 프록시: 사용 안함 (직접 연결)")
                 return ip
         except Exception as e:
-            print(f"  [-] IP 확인 실패: {str(e)}")
+            # 프록시 실패 처리
+            if self.current_proxy:
+                print(f"  [-] 프록시 {self.current_proxy} 실패")
+                self.failed_proxies.append(str(self.session.proxies))
+                # 다음 프록시로 전환
+                self._rotate_proxy()
+                return "프록시 전환 중..."
+            else:
+                print(f"  [-] IP 확인 실패: {str(e)}")
             return None
 
     def login(self):
@@ -274,12 +314,28 @@ class DVWASession:
         Returns:
             requests.Response: 응답 객체
         """
-        # 익명화 활성화시 User-Agent 로테이션
+        # 익명화 활성화시 User-Agent와 프록시 로테이션
         if self.use_anonymization:
             self._rotate_user_agent()
+            # 매 5번째 요청마다 프록시 변경
+            if hasattr(self, 'request_count'):
+                self.request_count += 1
+                if self.request_count % 5 == 0:
+                    self._rotate_proxy()
+            else:
+                self.request_count = 1
 
         url = f"{self.base_url}/{relative_url.lstrip('/')}"
-        return self.session.get(url, params=params)
+        try:
+            return self.session.get(url, params=params)
+        except Exception as e:
+            # 프록시 오류시 재시도
+            if self.use_anonymization and self.current_proxy:
+                print(f"  [!] 요청 실패, 프록시 전환 중...")
+                self.failed_proxies.append(str(self.session.proxies))
+                self._rotate_proxy()
+                return self.session.get(url, params=params)
+            raise
 
     def post_page(self, relative_url, data=None):
         """
@@ -292,12 +348,28 @@ class DVWASession:
         Returns:
             requests.Response: 응답 객체
         """
-        # 익명화 활성화시 User-Agent 로테이션
+        # 익명화 활성화시 User-Agent와 프록시 로테이션
         if self.use_anonymization:
             self._rotate_user_agent()
+            # 매 5번째 요청마다 프록시 변경
+            if hasattr(self, 'request_count'):
+                self.request_count += 1
+                if self.request_count % 5 == 0:
+                    self._rotate_proxy()
+            else:
+                self.request_count = 1
 
         url = f"{self.base_url}/{relative_url.lstrip('/')}"
-        return self.session.post(url, data=data)
+        try:
+            return self.session.post(url, data=data)
+        except Exception as e:
+            # 프록시 오류시 재시도
+            if self.use_anonymization and self.current_proxy:
+                print(f"  [!] 요청 실패, 프록시 전환 중...")
+                self.failed_proxies.append(str(self.session.proxies))
+                self._rotate_proxy()
+                return self.session.post(url, data=data)
+            raise
 
     def switch_identity(self):
         """신원 전환 (프록시 및 User-Agent 변경)"""

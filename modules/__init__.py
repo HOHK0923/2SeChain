@@ -12,6 +12,7 @@ from . import cloud_exploit
 from . import privilege_escalation
 from . import docker_escape
 from . import anonymization
+from . import post_docker_exploit
 
 __all__ = [
     'sql_injection',
@@ -24,4 +25,5 @@ __all__ = [
     'privilege_escalation',
     'docker_escape',
     'anonymization',
+    'post_docker_exploit',
 ]

