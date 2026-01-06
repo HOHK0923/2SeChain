@@ -1,0 +1,25 @@
+Technique: Procfs Host Access
+Command: ps aux | head -20
+Timestamp: 2026-01-05 17:21:08.898593
+================================================================================
+
+USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root           1  0.0  0.2  17956  2780 ?        Ss   00:21   0:00 /bin/bash /main.sh
+root          37  0.0  0.3  18236  3080 ?        S    00:21   0:00 /bin/bash /usr/bin/mysqld_safe
+mysql        183  0.0  8.5 725404 80176 ?        Sl   00:21   0:17 /usr/sbin/mysqld --basedir=/usr --datadir=/var/lib/mysql --plugin-dir=/usr/lib/x86_64-linux-gnu/mariadb18/plugin --user=mysql --skip-log-error --pid-file=/var/run/mysqld/mysqld.pid --socket=/var/run/mysqld/mysqld.sock --port=3306
+root         184  0.0  0.1  25396  1396 ?        S    00:21   0:00 logger -t mysqld -p daemon error
+root         296  0.0  3.2 373992 30572 ?        Ss   00:21   0:01 /usr/sbin/apache2 -k start
+www-data     299  0.0  1.6 374604 15540 ?        S    00:21   0:00 /usr/sbin/apache2 -k start
+www-data     300  0.0  1.6 374560 15664 ?        S    00:21   0:00 /usr/sbin/apache2 -k start
+www-data     302  0.0  1.8 374744 17068 ?        S    00:21   0:00 /usr/sbin/apache2 -k start
+www-data     303  0.0  1.8 374744 17116 ?        S    00:21   0:00 /usr/sbin/apache2 -k start
+root         306  0.0  0.0   4240   720 ?        S    00:21   0:01 tail -f /var/log/apache2/access.log /var/log/apache2/error.log /var/log/apache2/other_vhosts_access.log
+www-data     307  0.0  1.6 374560 15504 ?        S    00:26   0:00 /usr/sbin/apache2 -k start
+www-data     308  0.0  1.8 374692 17240 ?        S    01:16   0:00 /usr/sbin/apache2 -k start
+www-data     310  0.0  1.6 374468 15320 ?        S    03:29   0:00 /usr/sbin/apache2 -k start
+www-data     311  0.0  1.5 374468 14772 ?        S    04:17   0:00 /usr/sbin/apache2 -k start
+www-data     312  0.0  1.8 374744 17320 ?        S    04:17   0:00 /usr/sbin/apache2 -k start
+www-data     313  0.0  1.6 374556 15524 ?        S    04:17   0:00 /usr/sbin/apache2 -k start
+www-data     670  0.0  0.0   4296   732 ?        S    08:21   0:00 sh -c ping  -c 4 127.0.0.1; ps aux | head -20
+www-data     672  0.0  0.2  36644  2768 ?        R    08:21   0:00 ps aux
+www-data     673  0.0  0.0   4216   720 ?        S    08:21   0:00 head -20

@@ -1,0 +1,7 @@
+Technique: host_filesystem
+Command: mount | grep /proc/sys
+Timestamp: 2026-01-05 17:20:22.585340
+================================================================================
+
+proc on /proc/sys type proc (ro,nosuid,nodev,noexec,relatime)
+proc on /proc/sysrq-trigger type proc (ro,nosuid,nodev,noexec,relatime)

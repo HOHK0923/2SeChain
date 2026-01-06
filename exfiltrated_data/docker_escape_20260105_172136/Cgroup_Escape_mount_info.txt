@@ -1,0 +1,6 @@
+Technique: Cgroup Escape
+Command: mount | grep cgroup
+Timestamp: 2026-01-05 17:21:36.084967
+================================================================================
+
+cgroup on /sys/fs/cgroup type cgroup2 (ro,nosuid,nodev,noexec,relatime,seclabel,nsdelegate,memory_recursiveprot)

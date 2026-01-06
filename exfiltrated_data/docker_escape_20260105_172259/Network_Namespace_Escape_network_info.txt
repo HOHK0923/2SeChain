@@ -1,0 +1,6 @@
+Technique: Network Namespace Escape
+Command: ip neigh 2>/dev/null || arp -a 2>/dev/null
+Timestamp: 2026-01-05 17:22:59.638892
+================================================================================
+
+172.17.0.1 dev eth0 lladdr 02:42:9b:90:07:5c REACHABLE

@@ -13,6 +13,7 @@ from . import privilege_escalation
 from . import docker_escape
 from . import anonymization
 from . import post_docker_exploit
+from . import detection_trigger
 
 __all__ = [
     'sql_injection',
@@ -26,4 +27,5 @@ __all__ = [
     'docker_escape',
     'anonymization',
     'post_docker_exploit',
+    'detection_trigger',
 ]

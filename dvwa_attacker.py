@@ -11,6 +11,7 @@ import readline
 from datetime import datetime
 from modules import sql_injection, xss_attack, cmd_injection, file_upload
 from modules import post_exploit, pivoting, cloud_exploit, privilege_escalation, docker_escape, post_docker_exploit
+from modules import detection_trigger
 from utils import logger, session_manager
 
 # 컬러 출력을 위한 ANSI 코드
@@ -90,11 +91,25 @@ class DVWAAttacker:
   privesc                             - 권한 상승 및 루트 권한 획득 시도
   docker-escape                       - Docker 컨테이너 탈출 및 호스트 권한 획득
   post-docker <type>                  - Docker 탈출 후 추가 공격
+    - host_system_takeover            : 호스트 시스템 완전 장악 ⭐
     - aws_takeover                    : AWS 권한 탈취
     - opensearch_takeover             : OpenSearch/Kibana 장악
     - database_credentials            : DB 크리덴셜 수집
     - container_manipulation          : 다른 컨테이너 조작
     - persistence_backdoor            : 영구 백도어 설치
+
+{Colors.CYAN}[탐지 테스트]{Colors.END}
+  trigger-detection                   - 모든 탐지 룰 트리거 🚨
+  trigger-detection <rule>            - 특정 탐지 룰만 트리거
+    - recon : 404 정찰 활동
+    - auth  : 인증 남용
+    - cmd   : 명령어 주입
+    - path  : 경로 탐색/LFI
+    - scan  : 웹 스캐닝
+    - sql   : SQL 인젝션
+    - slow  : Slowloris
+    - ua    : 의심스러운 User-Agent
+    - xss   : XSS 공격
 
 {Colors.CYAN}[기타]{Colors.END}
   switch-ip                           - IP 주소 전환 (익명화 모드 필요)
@@ -346,8 +361,8 @@ class DVWAAttacker:
             return
 
         attack_type = args[0].lower()
-        available_attacks = ['aws_takeover', 'opensearch_takeover', 'database_credentials',
-                           'container_manipulation', 'persistence_backdoor']
+        available_attacks = ['host_system_takeover', 'aws_takeover', 'opensearch_takeover',
+                           'database_credentials', 'container_manipulation', 'persistence_backdoor']
 
         if attack_type not in available_attacks:
             print(f"{Colors.RED}[!] 알 수 없는 공격 유형: {attack_type}{Colors.END}")
@@ -357,6 +372,28 @@ class DVWAAttacker:
         print(f"{Colors.YELLOW}[*] Docker 탈출 후 추가 공격 시작...{Colors.END}")
         result = post_docker_exploit.run_post_escape_attack(self.session, attack_type, self.delay)
         self._print_result(result)
+
+    def cmd_trigger_detection(self, args):
+        """탐지 룰 트리거"""
+        if not self.connected:
+            print(f"{Colors.RED}[!] 먼저 타겟에 연결하세요{Colors.END}")
+            return
+
+        if len(args) == 0:
+            # 모든 탐지 룰 트리거
+            print(f"{Colors.YELLOW}[!] 경고: 모든 탐지 룰을 트리거합니다!{Colors.END}")
+            print(f"{Colors.YELLOW}[!] SIEM에 대량의 알림이 발생할 수 있습니다.{Colors.END}")
+            confirm = input(f"{Colors.CYAN}계속하시겠습니까? (y/N): {Colors.END}")
+
+            if confirm.lower() == 'y':
+                result = detection_trigger.run_all_detection_triggers(self.session)
+                self._print_result(result)
+        else:
+            # 특정 룰만 트리거
+            rule = args[0].lower()
+            print(f"{Colors.YELLOW}[*] {rule} 탐지 룰 트리거 시작...{Colors.END}")
+            result = detection_trigger.run_specific_detection_trigger(self.session, rule)
+            self._print_result(result)
 
     def cmd_logs(self):
         """로그 파일 목록"""
@@ -495,6 +532,9 @@ class DVWAAttacker:
 
                 elif cmd == 'post-docker':
                     self.cmd_post_docker(args)
+
+                elif cmd == 'trigger-detection':
+                    self.cmd_trigger_detection(args)
 
                 elif cmd == 'switch-ip' or cmd == 'rotate-ip':
                     self.cmd_switch_ip()

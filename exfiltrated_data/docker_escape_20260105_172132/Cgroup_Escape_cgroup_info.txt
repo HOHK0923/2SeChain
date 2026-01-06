@@ -1,0 +1,77 @@
+Technique: Cgroup Escape
+Command: ls -la /sys/fs/cgroup/ 2>/dev/null
+Timestamp: 2026-01-05 17:21:32.056138
+================================================================================
+
+total 0
+drwxr-xr-x. 2 root root 0 Jan  5 00:21 .
+drwxr-xr-x. 9 root root 0 Jan  5 00:21 ..
+-r--r--r--. 1 root root 0 Jan  5 00:21 cgroup.controllers
+-r--r--r--. 1 root root 0 Jan  5 00:21 cgroup.events
+-rw-r--r--. 1 root root 0 Jan  5 00:21 cgroup.freeze
+--w-------. 1 root root 0 Jan  5 08:01 cgroup.kill
+-rw-r--r--. 1 root root 0 Jan  5 08:01 cgroup.max.depth
+-rw-r--r--. 1 root root 0 Jan  5 08:01 cgroup.max.descendants
+-rw-r--r--. 1 root root 0 Jan  5 08:01 cgroup.pressure
+-rw-r--r--. 1 root root 0 Jan  5 00:21 cgroup.procs
+-r--r--r--. 1 root root 0 Jan  5 08:01 cgroup.stat
+-rw-r--r--. 1 root root 0 Jan  5 00:21 cgroup.subtree_control
+-rw-r--r--. 1 root root 0 Jan  5 08:01 cgroup.threads
+-rw-r--r--. 1 root root 0 Jan  5 00:21 cgroup.type
+-rw-r--r--. 1 root root 0 Jan  5 00:21 cpu.idle
+-rw-r--r--. 1 root root 0 Jan  5 00:21 cpu.max
+-rw-r--r--. 1 root root 0 Jan  5 08:01 cpu.max.burst
+-rw-r--r--. 1 root root 0 Jan  5 08:01 cpu.pressure
+-r--r--r--. 1 root root 0 Jan  5 00:21 cpu.stat
+-rw-r--r--. 1 root root 0 Jan  5 00:21 cpu.weight
+-rw-r--r--. 1 root root 0 Jan  5 08:01 cpu.weight.nice
+-rw-r--r--. 1 root root 0 Jan  5 00:21 cpuset.cpus
+-r--r--r--. 1 root root 0 Jan  5 08:01 cpuset.cpus.effective
+-rw-r--r--. 1 root root 0 Jan  5 08:01 cpuset.cpus.partition
+-rw-r--r--. 1 root root 0 Jan  5 00:21 cpuset.mems
+-r--r--r--. 1 root root 0 Jan  5 08:01 cpuset.mems.effective
+-r--r--r--. 1 root root 0 Jan  5 08:01 hugetlb.1GB.current
+-r--r--r--. 1 root root 0 Jan  5 08:01 hugetlb.1GB.events
+-r--r--r--. 1 root root 0 Jan  5 08:01 hugetlb.1GB.events.local
+-rw-r--r--. 1 root root 0 Jan  5 08:01 hugetlb.1GB.max
+-r--r--r--. 1 root root 0 Jan  5 08:01 hugetlb.1GB.numa_stat
+-r--r--r--. 1 root root 0 Jan  5 08:01 hugetlb.1GB.rsvd.current
+-rw-r--r--. 1 root root 0 Jan  5 08:01 hugetlb.1GB.rsvd.max
+-r--r--r--. 1 root root 0 Jan  5 08:01 hugetlb.2MB.current
+-r--r--r--. 1 root root 0 Jan  5 08:01 hugetlb.2MB.events
+-r--r--r--. 1 root root 0 Jan  5 08:01 hugetlb.2MB.events.local
+-rw-r--r--. 1 root root 0 Jan  5 08:01 hugetlb.2MB.max
+-r--r--r--. 1 root root 0 Jan  5 08:01 hugetlb.2MB.numa_stat
+-r--r--r--. 1 root root 0 Jan  5 08:01 hugetlb.2MB.rsvd.current
+-rw-r--r--. 1 root root 0 Jan  5 08:01 hugetlb.2MB.rsvd.max
+-rw-r--r--. 1 root root 0 Jan  5 00:21 io.bfq.weight
+-rw-r--r--. 1 root root 0 Jan  5 08:01 io.max
+-rw-r--r--. 1 root root 0 Jan  5 08:01 io.pressure
+-r--r--r--. 1 root root 0 Jan  5 00:21 io.stat
+-rw-r--r--. 1 root root 0 Jan  5 00:21 io.weight
+-r--r--r--. 1 root root 0 Jan  5 08:01 memory.current
+-r--r--r--. 1 root root 0 Jan  5 00:21 memory.events
+-r--r--r--. 1 root root 0 Jan  5 08:01 memory.events.local
+-rw-r--r--. 1 root root 0 Jan  5 00:21 memory.high
+-rw-r--r--. 1 root root 0 Jan  5 00:21 memory.low
+-rw-r--r--. 1 root root 0 Jan  5 00:21 memory.max
+-rw-r--r--. 1 root root 0 Jan  5 00:21 memory.min
+-r--r--r--. 1 root root 0 Jan  5 08:01 memory.numa_stat
+-rw-r--r--. 1 root root 0 Jan  5 00:21 memory.oom.group
+-r--r--r--. 1 root root 0 Jan  5 08:01 memory.peak
+-rw-r--r--. 1 root root 0 Jan  5 08:01 memory.pressure
+--w-------. 1 root root 0 Jan  5 08:01 memory.reclaim
+-r--r--r--. 1 root root 0 Jan  5 08:01 memory.stat
+-r--r--r--. 1 root root 0 Jan  5 08:01 memory.swap.current
+-r--r--r--. 1 root root 0 Jan  5 08:01 memory.swap.events
+-rw-r--r--. 1 root root 0 Jan  5 08:01 memory.swap.high
+-rw-r--r--. 1 root root 0 Jan  5 00:21 memory.swap.max
+-r--r--r--. 1 root root 0 Jan  5 08:01 memory.zswap.current
+-rw-r--r--. 1 root root 0 Jan  5 08:01 memory.zswap.max
+-r--r--r--. 1 root root 0 Jan  5 08:01 misc.current
+-r--r--r--. 1 root root 0 Jan  5 08:01 misc.events
+-rw-r--r--. 1 root root 0 Jan  5 08:01 misc.max
+-r--r--r--. 1 root root 0 Jan  5 08:01 pids.current
+-r--r--r--. 1 root root 0 Jan  5 08:01 pids.events
+-rw-r--r--. 1 root root 0 Jan  5 00:21 pids.max
+-r--r--r--. 1 root root 0 Jan  5 08:01 pids.peak

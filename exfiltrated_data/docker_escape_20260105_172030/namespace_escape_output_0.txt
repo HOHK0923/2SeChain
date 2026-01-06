@@ -1,0 +1,6 @@
+Technique: namespace_escape
+Command: cat /proc/self/status | grep NSpid
+Timestamp: 2026-01-05 17:20:30.635194
+================================================================================
+
+NSpid:	639

@@ -1,0 +1,9 @@
+Technique: container_detection
+Command: cat /proc/self/mountinfo | grep docker
+Timestamp: 2026-01-05 17:19:54.389220
+================================================================================
+
+607 259 0:45 / / rw,relatime - overlay overlay rw,seclabel,lowerdir=/var/lib/docker/overlay2/l/CQZTQSPPU3OZBJN2DFIA75LKFW:/var/lib/docker/overlay2/l/CKIJAO63UHZ4VHKZMDJU5CL6AF:/var/lib/docker/overlay2/l/ORXEPM3XOHMWZFWR75JXLZ7ZNM:/var/lib/docker/overlay2/l/OBLJD2J6G6OAUAWWRZU3S6ZD3R:/var/lib/docker/overlay2/l/JDEXEWJEKSFRP2FT3CZGAH5KPO:/var/lib/docker/overlay2/l/PW27FCNIW3WA5MYWUH6V5MVELO:/var/lib/docker/overlay2/l/5K7WRIM5FBUWY7CW5WUTSXGLGY:/var/lib/docker/overlay2/l/WSSCW4R2UTO5GXIVJWWDY6TA5Y:/var/lib/docker/overlay2/l/54FWJQARDGOAPMOGPZRRCLDIR6,upperdir=/var/lib/docker/overlay2/d3f4d8283670a5297ec4dab528bed706cfe5105a0d52c463b6067fb449510e03/diff,workdir=/var/lib/docker/overlay2/d3f4d8283670a5297ec4dab528bed706cfe5105a0d52c463b6067fb449510e03/work
+759 607 259:1 /var/lib/docker/containers/5154f3df004830357a3579e49a9b0e6f63c69f090aa7116b769e3a10e113f07b/resolv.conf /etc/resolv.conf rw,noatime - xfs /dev/nvme0n1p1 rw,seclabel,attr2,inode64,logbufs=8,logbsize=32k,sunit=1024,swidth=1024,noquota
+760 607 259:1 /var/lib/docker/containers/5154f3df004830357a3579e49a9b0e6f63c69f090aa7116b769e3a10e113f07b/hostname /etc/hostname rw,noatime - xfs /dev/nvme0n1p1 rw,seclabel,attr2,inode64,logbufs=8,logbsize=32k,sunit=1024,swidth=1024,noquota
+761 607 259:1 /var/lib/docker/containers/5154f3df004830357a3579e49a9b0e6f63c69f090aa7116b769e3a10e113f07b/hosts /etc/hosts rw,noatime - xfs /dev/nvme0n1p1 rw,seclabel,attr2,inode64,logbufs=8,logbsize=32k,sunit=1024,swidth=1024,noquota

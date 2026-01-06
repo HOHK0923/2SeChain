@@ -1,0 +1,7 @@
+Technique: Network Namespace Escape
+Command: ip route 2>/dev/null || route -n 2>/dev/null
+Timestamp: 2026-01-05 17:22:55.614287
+================================================================================
+
+default via 172.17.0.1 dev eth0 
+172.17.0.0/16 dev eth0 proto kernel scope link src 172.17.0.2

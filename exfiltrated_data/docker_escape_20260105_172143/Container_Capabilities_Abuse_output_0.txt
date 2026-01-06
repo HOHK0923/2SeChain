@@ -1,0 +1,10 @@
+Technique: Container Capabilities Abuse
+Command: cat /proc/self/status | grep Cap
+Timestamp: 2026-01-05 17:21:43.130694
+================================================================================
+
+CapInh:	0000000000000000
+CapPrm:	0000000000000000
+CapEff:	0000000000000000
+CapBnd:	00000000a80425fb
+CapAmb:	0000000000000000

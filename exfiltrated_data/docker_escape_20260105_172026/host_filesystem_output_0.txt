@@ -1,0 +1,6 @@
+Technique: host_filesystem
+Command: df -h | grep /host
+Timestamp: 2026-01-05 17:20:26.608644
+================================================================================
+
+/dev/nvme0n1p1   30G  3.0G   27G  10% /etc/hosts

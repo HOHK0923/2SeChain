@@ -1,0 +1,6 @@
+Technique: privileged_container
+Command: cat /proc/self/status | grep CapEff
+Timestamp: 2026-01-05 17:20:06.468686
+================================================================================
+
+CapEff:	0000000000000000
