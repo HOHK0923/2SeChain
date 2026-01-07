@@ -18,8 +18,13 @@ DVWA(Damn Vulnerable Web Application)를 대상으로 다양한 웹 취약점 �
 - **XSS (Cross-Site Scripting)** - Reflected/Stored XSS 공격
 - **Command Injection** - 시스템 명령어 인젝션
 - **File Upload** - 악성 파일 업로드 및 웹셸 배포
-- **Post-Exploitation** - 시스템 정보 수집, 권한 상승 시도
-- **Pivoting & Data Exfiltration** - 내부 네트워크 탐색 및 데이터 탈취
+- **Post-Exploitation** - 시스템 정보 수집 및 권한/자격증명 탐색
+- **Pivoting & Data Exfiltration** - 내부 네트워크 탐색 및 민감 데이터 수집
+- **Cloud Exploit** - AWS IMDS 메타데이터 수집 및 자격증명 탈취 시도
+- **Privilege Escalation** - 권한 상승 벡터 스캔 및 루트 권한 획득 시도
+- **Docker Escape** - 컨테이너 탈출 및 호스트 권한 획득 시도
+- **Post-Docker Exploit** - 호스트 장악/자격증명/지속성 시도
+- **Detection Rule Trigger** - SIEM 탐지 룰 트리거용 공격 패턴 실행
 
 ### 특징
 
@@ -27,6 +32,8 @@ DVWA(Damn Vulnerable Web Application)를 대상으로 다양한 웹 취약점 �
 - 실시간 연결 상태 표시
 - 상세한 공격 로그 자동 생성
 - SIEM 로그 수집 테스트용 최적화
+- 익명화 모드 지원 (User-Agent/프록시 로테이션)
+- Tor 네트워크 옵션 지원 (로컬 Tor 필요)
 - 칼리 리눅스 환경 지원
 - 모듈화된 구조로 확장 가능
 
@@ -51,7 +58,10 @@ sudo bash install.sh
 
 ```bash
 # 필요한 패키지 설치
-pip3 install requests beautifulsoup4 lxml
+pip3 install -r requirements.txt
+
+# (선택) Tor 사용 시
+pip3 install pysocks
 
 # 실행 권한 부여
 chmod +x dvwa_attacker.py
@@ -78,9 +88,10 @@ $ 2sechain
 # 프롬프트가 나타남
 2sechain>
 
-# 2. 타겟에 연결
-2sechain> connect http://192.168.1.100/dvwa admin password
+# 2. 타겟에 연결 (익명화 모드)
+2sechain> connect http://192.168.1.100/dvwa admin password --anon
 [*] http://192.168.1.100/dvwa에 연결 중...
+[+] 익명화 모드 활성화
 [+] 연결 성공!
 [+] 로그인: admin
 [+] 보안 레벨: LOW
@@ -133,19 +144,23 @@ $ 2sechain
   [2/3] 중요 파일 탐색 중...
   [3/3] 데이터 탈취 시도 중...
 
-# 9. 로그 확인
+# 9. 클라우드 메타데이터 수집 (IMDS)
+2sechain (http://192.168.1.100/dvwa)> cloud-exploit
+[*] AWS IMDS 탈취 및 클라우드 메타데이터 수집 시작...
+
+# 10. 로그 확인
 2sechain (http://192.168.1.100/dvwa)> logs
 [로그 파일 목록]
   1. attack_20240315_143052.log (23456 bytes)
   2. attack_20240315_145230.log (18923 bytes)
 
-# 10. 마지막 로그 보기
+# 11. 마지막 로그 보기
 2sechain (http://192.168.1.100/dvwa)> show last-log
 [attack_20240315_143052.log]
 2024-03-15 14:30:52 | INFO     | SQL_INJECTION        | SUCCESS    | ...
 ...
 
-# 11. 종료
+# 12. 종료
 2sechain (http://192.168.1.100/dvwa)> exit
 [+] 연결 해제됨
 [*] 종료합니다.
@@ -157,6 +172,8 @@ $ 2sechain
 
 ```bash
 connect <url> <username> <password>  # DVWA에 연결
+  --anon                            # 익명화 모드 (UA/프록시 로테이션)
+  --tor                             # Tor 네트워크 사용 (로컬 Tor 필요)
 disconnect                           # 연결 해제
 status                              # 현재 상태 확인
 set security <level>                # 보안 레벨 설정 (low/medium/high)
@@ -178,6 +195,28 @@ attack all                          # 모든 기본 공격 실행
 ```bash
 post-exploit                        # Post-Exploitation
 pivoting                            # 피버팅 및 데이터 탈취
+cloud-exploit                       # AWS IMDS 탈취 및 클라우드 메타데이터 수집
+privesc                             # 권한 상승 시도
+docker-escape                       # Docker 컨테이너 탈출 시도
+post-docker <type>                  # Docker 탈출 후 추가 공격
+  host_system_takeover              # 호스트 시스템 장악
+  aws_takeover                      # AWS 권한 탈취
+  opensearch_takeover               # OpenSearch/Kibana 장악
+  database_credentials              # DB 크리덴셜 수집
+  container_manipulation            # 다른 컨테이너 조작
+  persistence_backdoor              # 영구 백도어 설치
+
+trigger-detection                   # 모든 탐지 룰 트리거
+trigger-detection <rule>            # 특정 탐지 룰만 트리거
+  recon                             # 404 정찰 활동
+  auth                              # 인증 남용
+  cmd                               # 명령어 주입
+  path                              # 경로 탐색/LFI
+  scan                              # 웹 스캐닝
+  sql                               # SQL 인젝션
+  slow                              # Slowloris
+  ua                                # 의심스러운 User-Agent
+  xss                               # XSS 공격
 ```
 
 ### 기타
@@ -186,6 +225,7 @@ pivoting                            # 피버팅 및 데이터 탈취
 logs                                # 로그 파일 목록
 show last-log                       # 마지막 로그 내용 보기
 verbose <on/off>                    # 상세 출력 모드
+switch-ip (rotate-ip)               # 익명화 모드에서 IP/UA 전환
 clear                               # 화면 지우기
 help                                # 도움말
 exit, quit                          # 종료
@@ -203,12 +243,18 @@ attack-automation/
 │   ├── cmd_injection.py      # Command Injection 모듈
 │   ├── file_upload.py        # File Upload 모듈
 │   ├── post_exploit.py       # Post-Exploitation 모듈
-│   └── pivoting.py           # 피버팅 및 데이터 탈취 모듈
+│   ├── pivoting.py           # 피버팅 및 데이터 탈취 모듈
+│   ├── cloud_exploit.py       # AWS IMDS 탈취 모듈
+│   ├── privilege_escalation.py # 권한 상승 모듈
+│   ├── docker_escape.py        # Docker 탈출 모듈
+│   ├── post_docker_exploit.py # Docker 탈출 후 추가 공격
+│   └── detection_trigger.py  # 탐지 룰 트리거 모듈
 ├── utils/                    # 유틸리티
 │   ├── logger.py             # 로그 관리
 │   └── session_manager.py    # 세션 관리
 ├── payloads/                 # 페이로드 저장소 (자동 생성)
-└── logs/                     # 로그 저장 디렉토리 (자동 생성)
+├── logs/                     # 로그 저장 디렉토리 (자동 생성)
+└── exfiltrated_data/         # 탈취 데이터 저장 디렉토리
 ```
 
 ## 로그 파일
@@ -276,6 +322,7 @@ $ 2sechain
 2. **지연 시간**: SIEM 테스트 시 `set delay 2`를 사용하여 로그 수집 확인
 3. **상태 확인**: `status` 명령어로 현재 설정을 언제든지 확인
 4. **로그 관리**: `logs` 명령어로 생성된 로그 파일 확인
+5. **탐지 룰 테스트**: `trigger-detection <rule>`로 특정 탐지 룰만 트리거
 
 ## 트러블슈팅
 
